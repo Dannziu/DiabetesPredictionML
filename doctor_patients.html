@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}My Patients - MediDiab{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>My Patients</h1>
+        <p>Patient Records & Clinical Analytics</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_patients }}</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🔴</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.high_risk }}</div>
+                <div class="stat-label">High Risk</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🟠</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.moderate_risk }}</div>
+                <div class="stat-label">Moderate Risk</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.low_risk }}</div>
+                <div class="stat-label">Low Risk</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Records Table -->
+    <div class="table-section">
+        <div class="table-header">
+            <h2>Patient Records</h2>
+            <div class="table-controls">
+                <input type="text" id="searchInput" class="search-box" placeholder="Search patients...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" id="patientsTable">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Age</th>
+                        <th>Glucose</th>
+                        <th>Blood Pressure</th>
+                        <th>BMI</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if patients %}
+                        {% for patient in patients %}
+                        <tr class="table-row" data-risk="{{ patient.risk_level }}">
+                            <td>{{ patient.patient_name }}</td>
+                            <td>{{ patient.age }}</td>
+                            <td>{{ patient.glucose }}</td>
+                            <td>{{ patient.blood_pressure }}</td>
+                            <td>{{ patient.bmi }}</td>
+                            <td>{{ (patient.prediction * 100) | round(1) }}%</td>
+                            <td>
+                                <span class="risk-badge {% if patient.risk_level == 'High Risk' %}risk-high{% elif patient.risk_level == 'Moderate Risk' %}risk-moderate{% else %}risk-low{% endif %}">
+                                    {{ patient.risk_level }}
+                                </span>
+                            </td>
+                            <td>{{ patient.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="empty-state">No patient records yet. Make your first prediction!</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if patients %}
+        <div class="table-footer">
+            <p>Showing {{ patients | length }} of {{ patients | length }} records</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.getElementById('searchInput').addEventListener('keyup', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#patientsTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

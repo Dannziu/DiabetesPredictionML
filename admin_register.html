@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Registration - MediDiab{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">🔐 Admin Registration</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4"><strong>Note:</strong> Admin account can only be set up once. After registration, only admin login will be available.</p>
+                    <form id="adminRegisterForm" novalidate>
+                        <div class="mb-3">
+                            <label for="medical_registration_number" class="form-label">Medical Registration Number *</label>
+                            <input type="text" class="form-control" id="medical_registration_number" name="medical_registration_number" required placeholder="MRN-123456" minlength="5">
+                            <small class="form-text text-muted">e.g., MRN-123456 or similar identifier</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
+                            <small class="form-text text-muted">Minimum 8 characters recommended</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password *</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8" placeholder="Confirm your password">
+                        </div>
+                        <div id="message" class="alert" role="alert" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary w-100 mb-3" id="submitBtn">Register Admin Account</button>
+                        <p class="text-center text-muted mt-3">
+                            <a href="{{ url_for('index') }}">Back to Home</a>
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('adminRegisterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const medicalRegNum = document.getElementById('medical_registration_number').value;
+    const messageDiv = document.getElementById('message');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Validation
+    if (!medicalRegNum.trim()) {
+        showMessage('Please enter medical registration number', 'danger', messageDiv);
+        return;
+    }
+    
+    if (password.length < 8) {
+        showMessage('Password must be at least 8 characters', 'danger', messageDiv);
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showMessage('Passwords do not match!', 'danger', messageDiv);
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Registering...';
+    
+    try {
+        const response = await fetch('{{ url_for("admin_register") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                medical_registration_number: medicalRegNum,
+                password: password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message + ' Redirecting to login...', 'success', messageDiv);
+            setTimeout(() => {
+                window.location.href = '{{ url_for("admin_login") }}';
+            }, 2000);
+        } else {
+            showMessage(data.message, 'danger', messageDiv);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Register Admin Account';
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showMessage('An error occurred during registration. Please try again.', 'danger', messageDiv);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Register Admin Account';
+    }
+});
+
+function showMessage(message, type, container) {
+    container.className = 'alert alert-' + type;
+    container.textContent = message;
+    container.style.display = 'block';
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+{% endblock %}

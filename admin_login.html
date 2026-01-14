@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login - MediDiab{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">🔐 Admin Login</h3>
+                </div>
+                <div class="card-body">
+                    <form id="adminLoginForm" novalidate>
+                        <div class="mb-3">
+                            <label for="medical_registration_number" class="form-label">Medical Registration Number *</label>
+                            <input type="text" class="form-control" id="medical_registration_number" name="medical_registration_number" required placeholder="MRN-123456">
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" name="password" required placeholder="••••••••">
+                        </div>
+                        <div id="message" class="alert" role="alert" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary w-100 mb-3" id="submitBtn">Admin Login</button>
+                    </form>
+                    <p class="text-center text-muted mt-3">
+                        <a href="{{ url_for('index') }}">Back to Home</a>
+                    </p>
+                    <p class="text-center text-muted">
+                        <small>Don't have an admin account? <a href="{{ url_for('admin_register') }}">Register here</a> (only if no admin exists)</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const messageDiv = document.getElementById('message');
+    const submitBtn = document.getElementById('submitBtn');
+    const medicalRegNum = document.getElementById('medical_registration_number').value;
+    const password = document.getElementById('password').value;
+    
+    if (!medicalRegNum.trim() || !password.trim()) {
+        showMessage('Please enter both medical registration number and password', 'danger', messageDiv);
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in...';
+    
+    try {
+        const response = await fetch('{{ url_for("admin_login") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                medical_registration_number: medicalRegNum,
+                password: password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage('Login successful! Redirecting...', 'success', messageDiv);
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1500);
+        } else {
+            showMessage(data.message, 'danger', messageDiv);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Admin Login';
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showMessage('An error occurred. Please try again.', 'danger', messageDiv);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Admin Login';
+    }
+});
+
+function showMessage(message, type, container) {
+    container.className = 'alert alert-' + type;
+    container.textContent = message;
+    container.style.display = 'block';
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+{% endblock %}

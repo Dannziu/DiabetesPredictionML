@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Global Patient History - MediDiab{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Global Patient History</h1>
+        <p>System-wide Clinical Analytics & Records</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-section">
+        <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.total_records }}</div>
+                <div class="stat-label">Total Records</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ stats.high_risk_count }}</div>
+                <div class="stat-label">High Risk Cases</div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-content">
+                <div class="stat-value">{{ (stats.avg_prediction * 100) | round(1) }}%</div>
+                <div class="stat-label">Avg Risk Score</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Patient Records Table -->
+    <div class="table-section">
+        <div class="table-header">
+            <h2>All Patient Records</h2>
+            <div class="table-controls">
+                <input type="text" id="searchInput" class="search-box" placeholder="Search patients...">
+                <select id="filterRisk" class="filter-select">
+                    <option value="">All Risk Levels</option>
+                    <option value="High Risk">High Risk</option>
+                    <option value="Moderate Risk">Moderate Risk</option>
+                    <option value="Low Risk">Low Risk</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" id="globalPatientsTable">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Age</th>
+                        <th>Glucose</th>
+                        <th>Blood Pressure</th>
+                        <th>BMI</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                        <th>Assessment Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if patients %}
+                        {% for patient in patients %}
+                        <tr class="table-row" data-risk="{{ patient.risk_level }}" data-patient="{{ patient.patient_name }}">
+                            <td>{{ patient.patient_name }}</td>
+                            <td>{{ patient.age }}</td>
+                            <td>{{ patient.glucose }}</td>
+                            <td>{{ patient.blood_pressure }}</td>
+                            <td>{{ patient.bmi }}</td>
+                            <td>
+                                <span class="risk-score">{{ (patient.prediction * 100) | round(1) }}%</span>
+                            </td>
+                            <td>
+                                <span class="risk-badge {% if patient.risk_level == 'High Risk' %}risk-high{% elif patient.risk_level == 'Moderate Risk' %}risk-moderate{% else %}risk-low{% endif %}">
+                                    {{ patient.risk_level }}
+                                </span>
+                            </td>
+                            <td>{{ patient.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="empty-state">No patient records in the system yet.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if patients %}
+        <div class="table-footer">
+            <p>Showing <span id="recordCount">{{ patients | length }}</span> of {{ patients | length }} records</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+const searchInput = document.getElementById('searchInput');
+const filterRisk = document.getElementById('filterRisk');
+const table = document.getElementById('globalPatientsTable');
+const rows = table.querySelectorAll('tbody tr');
+const recordCount = document.getElementById('recordCount');
+
+function filterTable() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const riskFilter = filterRisk.value;
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        if (row.querySelector('td:last-child')) {
+            const patientName = row.getAttribute('data-patient').toLowerCase();
+            const riskLevel = row.getAttribute('data-risk');
+            const matchesSearch = patientName.includes(searchTerm);
+            const matchesRisk = !riskFilter || riskLevel === riskFilter;
+
+            if (matchesSearch && matchesRisk) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+
+    recordCount.textContent = visibleCount;
+}
+
+searchInput.addEventListener('keyup', filterTable);
+filterRisk.addEventListener('change', filterTable);
+</script>
+{% endblock %}

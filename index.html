@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Home - MediDiab{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">Advanced Diabetes Prediction System</h1>
+        <p class="hero-subtitle">Clinical-grade AI predictions for better patient outcomes</p>
+    </div>
+</section>
+
+<section class="portals-section">
+    <div class="container">
+        <h2 class="section-title">Welcome to MediDiab</h2>
+        <p class="section-subtitle">Select your portal to access diabetes prediction services</p>
+        
+        <div class="portals-grid">
+            <!-- Admin Portal -->
+            <div class="portal-card admin-portal">
+                <div class="card-icon admin-icon">🔐</div>
+                <h3 class="card-title">Admin Portal</h3>
+                <p class="card-description">Manage healthcare providers and access clinical records</p>
+                
+                <div class="card-actions">
+                    <a href="{{ url_for('admin_login') }}" class="btn btn-primary">Admin Login</a>
+                    <a href="{{ url_for('admin_register') }}" class="btn btn-secondary">Admin Register (Once)</a>
+                </div>
+            </div>
+
+            <!-- Doctor Portal -->
+            <div class="portal-card doctor-portal">
+                <div class="card-icon doctor-icon">👨‍⚕️</div>
+                <h3 class="card-title">Doctor Portal</h3>
+                <p class="card-description">Access patient predictions and manage clinical records</p>
+                
+                <div class="card-actions">
+                    <a href="{{ url_for('doctor_login') }}" class="btn btn-primary">Doctor Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="features-section">
+    <div class="container">
+        <h2 class="section-title">Key Features</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Accurate Predictions</h3>
+                <p>Machine learning model trained on comprehensive diabetes datasets for reliable risk assessment</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Secure Access</h3>
+                <p>HIPAA-compliant data storage with encrypted doctor authentication and patient privacy protection</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Clinical Dashboard</h3>
+                <p>Real-time patient records, risk assessment, and comprehensive analytics for healthcare providers</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant Results</h3>
+                <p>Immediate prediction results with risk categorization to support clinical decision-making</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="info-section">
+    <div class="container">
+        <div class="info-box">
+            <h3>About MediDiab</h3>
+            <p>MediDiab is a clinical decision support system powered by advanced machine learning algorithms. It analyzes patient medical metrics to provide risk assessments for diabetes diagnosis. This system is designed to assist healthcare professionals in making informed clinical decisions and should always be used in conjunction with professional medical expertise.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

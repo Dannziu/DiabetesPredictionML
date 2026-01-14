@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction Dashboard - MediDiab{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gauge.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Model Prediction Dashboard</h1>
+        <p>Welcome, Dr. {{ doctor_name }}</p>
+    </div>
+
+    <div class="dashboard-content">
+        <!-- Prediction Form -->
+        <div class="prediction-form-section">
+            <h2>Patient Assessment</h2>
+            <p class="section-subtitle">Enter patient metrics for diabetes risk prediction</p>
+
+            <form id="predictionForm" class="prediction-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patient_name">Patient Name *</label>
+                        <input type="text" id="patient_name" name="patient_name" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="age">Age (years) *</label>
+                        <input type="number" id="age" name="age" required min="0" max="150" placeholder="45">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pregnancies">Pregnancies *</label>
+                        <input type="number" id="pregnancies" name="pregnancies" required min="0" max="20" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="glucose">Glucose (mg/dL) *</label>
+                        <input type="number" id="glucose" name="glucose" required min="0" step="0.1" placeholder="120">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="blood_pressure">Blood Pressure (mmHg) *</label>
+                        <input type="number" id="blood_pressure" name="blood_pressure" required min="0" step="0.1" placeholder="80">
+                    </div>
+                    <div class="form-group">
+                        <label for="skin_thickness">Skin Thickness (mm) *</label>
+                        <input type="number" id="skin_thickness" name="skin_thickness" required min="0" step="0.1" placeholder="26">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="insulin">Insulin (µU/ml) *</label>
+                        <input type="number" id="insulin" name="insulin" required min="0" step="0.1" placeholder="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="bmi">BMI (kg/m²) *</label>
+                        <input type="number" id="bmi" name="bmi" required min="0" step="0.1" placeholder="28.5">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="diabetes_pedigree">Diabetes Pedigree Function *</label>
+                        <input type="number" id="diabetes_pedigree" name="diabetes_pedigree" required min="0" max="2.5" step="0.001" placeholder="0.627">
+                    </div>
+                </div>
+
+                <div id="messageContainer" class="message-container" style="display: none;"></div>
+
+                <button type="submit" class="btn btn-primary btn-lg btn-submit">
+                    Generate Prediction
+                </button>
+            </form>
+        </div>
+
+        <!-- Result Section -->
+        <div class="prediction-result-section" id="resultSection" style="display: none;">
+            <h2>Prediction Result</h2>
+            
+            <div class="result-container">
+                <div class="gauge-container">
+                    <canvas id="riskGauge"></canvas>
+                    <div class="gauge-label">
+                        <span class="gauge-value" id="predictionValue">0%</span>
+                        <span class="gauge-unit">Risk Score</span>
+                    </div>
+                </div>
+
+                <div class="result-details">
+                    <div class="result-item">
+                        <span class="result-label">Risk Level:</span>
+                        <span class="result-value risk-badge" id="riskLevel">--</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Confidence:</span>
+                        <span class="result-value" id="confidence">--</span>
+                    </div>
+                    <div class="result-description" id="resultDescription">
+                        <!-- Result description will be inserted here -->
+                    </div>
+
+                    <!-- Medical Recommendations Section -->
+                    <div class="recommendations-section" id="recommendationsSection">
+                        <h3>Medical Recommendations</h3>
+                        <div id="recommendationsContent">
+                            <!-- Recommendations will be inserted here -->
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('predictionForm').reset(); document.getElementById('resultSection').style.display='none';">
+                        Make Another Prediction
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+let gaugeChart = null;
+
+document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const messageContainer = document.getElementById('messageContainer');
+    const submitButton = document.querySelector('.btn-submit');
+    
+    submitButton.disabled = true;
+    submitButton.textContent = 'Processing...';
+
+    const formData = {
+        patient_name: document.getElementById('patient_name').value,
+        age: parseInt(document.getElementById('age').value),
+        pregnancies: parseInt(document.getElementById('pregnancies').value),
+        glucose: parseFloat(document.getElementById('glucose').value),
+        blood_pressure: parseFloat(document.getElementById('blood_pressure').value),
+        skin_thickness: parseFloat(document.getElementById('skin_thickness').value),
+        insulin: parseFloat(document.getElementById('insulin').value),
+        bmi: parseFloat(document.getElementById('bmi').value),
+        diabetes_pedigree: parseFloat(document.getElementById('diabetes_pedigree').value)
+    };
+
+    try {
+        const response = await fetch('{{ url_for("prediction_dashboard") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayResult(data);
+            messageContainer.style.display = 'none';
+        } else {
+            showMessage(data.message, 'error', messageContainer);
+        }
+    } catch (error) {
+        showMessage('Prediction failed. Please try again.', 'error', messageContainer);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Generate Prediction';
+    }
+});
+
+function displayResult(data) {
+    const resultSection = document.getElementById('resultSection');
+    const predictionValue = data.prediction * 100;
+    
+    document.getElementById('predictionValue').textContent = predictionValue.toFixed(1) + '%';
+    document.getElementById('riskLevel').textContent = data.risk_level;
+    document.getElementById('confidence').textContent = (100 - Math.abs(50 - predictionValue * 100)) + '%';
+    
+    // Update risk badge color
+    const badge = document.getElementById('riskLevel');
+    if (data.risk_level === 'High Risk') {
+        badge.style.backgroundColor = '#ef4444';
+    } else if (data.risk_level === 'Moderate Risk') {
+        badge.style.backgroundColor = '#f59e0b';
+    } else {
+        badge.style.backgroundColor = '#10b981';
+    }
+
+    // Update description
+    const descriptions = {
+        'High Risk': 'This patient shows significant risk indicators for diabetes. Recommend immediate clinical consultation and further diagnostic testing.',
+        'Moderate Risk': 'This patient shows moderate risk indicators. Monitor closely and consider preventive measures and lifestyle recommendations.',
+        'Low Risk': 'This patient shows low risk indicators based on the assessed metrics. Continue regular monitoring.'
+    };
+    
+    document.getElementById('resultDescription').innerHTML = `
+        <p class="description-text">${descriptions[data.risk_level]}</p>
+    `;
+
+    // Generate medical recommendations based on risk level
+    const recommendations = getRecommendations(data.risk_level, data);
+    document.getElementById('recommendationsContent').innerHTML = recommendations;
+
+    updateGauge(predictionValue);
+    resultSection.style.display = 'block';
+    resultSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function getRecommendations(riskLevel, data) {
+    const baseRecommendations = {
+        'High Risk': {
+            urgency: 'URGENT',
+            color: 'high-risk',
+            clinical: [
+                'Schedule immediate endocrinologist consultation',
+                'Perform Hemoglobin A1C (HbA1c) test',
+                'Conduct Fasting Blood Glucose (FBG) test',
+                'Order Oral Glucose Tolerance Test (OGTT)',
+                'Assess renal function and urinalysis'
+            ],
+            lifestyle: [
+                'Implement strict dietary modifications (low glycemic index)',
+                'Start supervised exercise program (150+ min/week moderate activity)',
+                'Reduce weight by 5-7% if overweight',
+                'Eliminate refined carbohydrates and sugary beverages',
+                'Increase fiber intake (25-30g daily)'
+            ],
+            monitoring: [
+                'Monthly follow-up appointments',
+                'Regular glucose monitoring',
+                'Blood pressure checks every 2 weeks',
+                'Weight monitoring weekly',
+                'Review medications for potential adjustments'
+            ],
+            prevention: [
+                'Consider preventive medications as per clinical judgment',
+                'Family screening for diabetes',
+                'Stress management and sleep optimization',
+                'Smoking cessation if applicable'
+            ]
+        },
+        'Moderate Risk': {
+            urgency: 'IMPORTANT',
+            color: 'moderate-risk',
+            clinical: [
+                'Schedule routine physician consultation within 2-4 weeks',
+                'Perform Fasting Blood Glucose (FBG) test',
+                'Consider HbA1c screening',
+                'Monitor blood pressure regularly',
+                'Annual metabolic panel'
+            ],
+            lifestyle: [
+                'Adopt Mediterranean or DASH diet',
+                'Exercise 150 minutes per week (moderate intensity)',
+                'Gradual weight loss of 5-10% if overweight',
+                'Reduce sodium intake',
+                'Limit alcohol consumption'
+            ],
+            monitoring: [
+                'Quarterly follow-up appointments',
+                'Bi-weekly glucose monitoring',
+                'Blood pressure checks monthly',
+                'Weight monitoring bi-weekly',
+                'Annual comprehensive metabolic panel'
+            ],
+            prevention: [
+                'Join diabetes prevention program',
+                'Regular health education',
+                'Stress reduction techniques',
+                'Adequate sleep (7-9 hours daily)',
+                'Social support and community programs'
+            ]
+        },
+        'Low Risk': {
+            urgency: 'ROUTINE',
+            color: 'low-risk',
+            clinical: [
+                'Continue routine annual check-ups',
+                'Maintain baseline glucose monitoring',
+                'Regular blood pressure monitoring',
+                'Annual metabolic screening',
+                'Periodic lipid panel testing'
+            ],
+            lifestyle: [
+                'Maintain balanced, nutritious diet',
+                'Continue regular physical activity (150+ min/week)',
+                'Maintain healthy body weight',
+                'Stay hydrated (8+ glasses of water daily)',
+                'Regular sleep schedule (7-9 hours)'
+            ],
+            monitoring: [
+                'Annual physician check-up',
+                'Annual glucose screening',
+                'Regular blood pressure monitoring',
+                'Weight maintenance tracking',
+                'Periodic health assessments'
+            ],
+            prevention: [
+                'Maintain current healthy lifestyle habits',
+                'Continue preventive care practices',
+                'Regular exercise and activity',
+                'Healthy stress management',
+                'Family history monitoring'
+            ]
+        }
+    };
+
+    const recs = baseRecommendations[riskLevel];
+    
+    return `
+        <div class="recommendations-card ${recs.color}">
+            <div class="urgency-badge">${recs.urgency}</div>
+            
+            <div class="recommendation-category">
+                <h4>Clinical Actions</h4>
+                <ul class="recommendation-list">
+                    ${recs.clinical.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="recommendation-category">
+                <h4>Lifestyle Modifications</h4>
+                <ul class="recommendation-list">
+                    ${recs.lifestyle.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="recommendation-category">
+                <h4>Monitoring & Follow-up</h4>
+                <ul class="recommendation-list">
+                    ${recs.monitoring.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="recommendation-category">
+                <h4>Prevention Strategies</h4>
+                <ul class="recommendation-list">
+                    ${recs.prevention.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+function updateGauge(value) {
+    const canvas = document.getElementById('riskGauge');
+    
+    // Destroy existing chart if it exists
+    if (gaugeChart) {
+        gaugeChart.destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
+    const normalizedValue = value / 100;
+    
+    gaugeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            datasets: [
+                {
+                    data: [normalizedValue * 100, (1 - normalizedValue) * 100],
+                    backgroundColor: [
+                        normalizedValue > 0.6 ? '#ef4444' : normalizedValue > 0.4 ? '#f59e0b' : '#10b981',
+                        '#e5e7eb'
+                    ],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: 270
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false
+                }
+            }
+        }
+    });
+}
+
+function showMessage(message, type, container) {
+    container.className = `message-container message-${type}`;
+    container.textContent = message;
+    container.style.display = 'block';
+}
+</script>
+{% endblock %}
